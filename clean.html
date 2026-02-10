@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PH Jeepney Mapper - Clean View</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        
+        #map { height: 100vh; width: 100%; }
+        
+        .sidebar {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 350px;
+            height: 100vh;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-header .subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            background: #f5f5f5;
+            border: none;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover { background: #e0e0e0; }
+        .tab.active { background: white; color: #667eea; }
+        
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        
+        textarea { resize: vertical; min-height: 60px; }
+        
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5568d3; }
+        
+        .btn-success { background: #4CAF50; color: white; }
+        .btn-success:hover { background: #388E3C; }
+        
+        .btn-danger { background: #f44336; color: white; }
+        .btn-danger:hover { background: #d32f2f; }
+        
+        .btn-secondary { background: #9E9E9E; color: white; }
+        .btn-secondary:hover { background: #757575; }
+        
+        .poi-list, .route-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .poi-item, .route-item {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .poi-item:hover, .route-item:hover { 
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .poi-item.selected {
+            border-color: #667eea;
+            background: #e8eaff;
+        }
+        
+        .poi-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        
+        .poi-meta {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .poi-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-small {
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 4px;
+        }
+        
+        .status {
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .mode-toggle {
+            margin-bottom: 15px;
+        }
+        
+        .mode-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .mode-btn:hover { background: #f5f5f5; }
+        .mode-btn.active { 
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .routing-options {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9ff;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .routing-options label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .routing-options input[type="checkbox"] {
+            width: auto;
+        }
+
+        .locate-btn {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 20px;
+            transition: all 0.2s;
+        }
+
+        .locate-btn:hover {
+            background: #667eea;
+            border-color: #667eea;
+            transform: scale(1.1);
+        }
+
+        .locate-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <button class="locate-btn" id="locateBtn" title="Find my location">📍</button>
+    <div id="map"></div>
+    
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>🚌 Jeepney Mapper</h1>
+            <div class="subtitle">Clean View - Contributed POIs Only</div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="pois">📍 POIs</button>
+            <button class="tab" data-tab="routes">🛣️ Routes</button>
+            <button class="tab" data-tab="export">📤 Export</button>
+        </div>
+        
+        <div class="tab-content" id="tab-pois">
+            <div class="mode-toggle">
+                <label>Mode</label>
+                <div class="mode-buttons">
+                    <button class="mode-btn active" data-mode="add">➕ Add POI</button>
+                    <button class="mode-btn" data-mode="view">👁️ View All</button>
+                </div>
+            </div>
+
+            <div id="addPoiForm">
+                <div class="status" id="poiStatus">Click map to add POI</div>
+                
+                <div class="form-group">
+                    <label>POI Name *</label>
+                    <input type="text" id="poiName" placeholder="e.g., SM North Terminal">
+                </div>
+                
+                <div class="form-group">
+                    <label>Type *</label>
+                    <select id="poiType">
+                        <option value="terminal">Terminal</option>
+                        <option value="stop">Regular Stop</option>
+                        <option value="landmark">Landmark</option>
+                        <option value="transfer">Transfer Point</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="poiNotes" placeholder="Additional info..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Contributor Name *</label>
+                    <input type="text" id="poiContributor" placeholder="Your name">
+                </div>
+                
+                <button class="btn btn-primary" id="savePoi">💾 Save POI</button>
+            </div>
+
+            <div id="poiListView" style="display: none;">
+                <div class="poi-list" id="poiList"></div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="tab-routes" style="display: none;">
+            <div class="status" id="routeStatus">Select POIs to create route</div>
+            
+            <div class="form-group">
+                <label>Route Name *</label>
+                <input type="text" id="routeName" placeholder="e.g., Quiapo - Cubao">
+            </div>
+
+            <div class="form-group">
+                <label>Contributor Name *</label>
+                <input type="text" id="routeContributor" placeholder="Your name">
+            </div>
+
+            <div class="routing-options">
+                <label>
+                    <input type="checkbox" id="useAutoRouting" checked>
+                    Use auto-routing suggestions
+                </label>
+                <small style="color: #666;">Uncheck to draw custom straight lines</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Selected POIs (click to reorder)</label>
+                <div id="selectedPois" style="min-height: 60px; border: 1px dashed #ddd; border-radius: 4px; padding: 10px; font-size: 12px;"></div>
+            </div>
+            
+            <button class="btn btn-success" id="saveRoute">💾 Save Route</button>
+            <button class="btn btn-danger" id="clearRoute">🗑️ Clear Selection</button>
+
+            <div style="margin-top: 20px;">
+                <label>Saved Routes</label>
+                <div class="route-list" id="routeList"></div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="tab-export" style="display: none;">
+            <div class="form-group">
+                <label>Export All Data</label>
+                <button class="btn btn-success" id="exportJson">📥 Download JSON</button>
+            </div>
+
+            <div class="form-group">
+                <label>Import Data</label>
+                <input type="file" id="importFile" accept=".json">
+                <button class="btn btn-primary" id="importJson">📤 Import JSON</button>
+            </div>
+
+            <div class="form-group">
+                <label>Statistics</label>
+                <div id="stats" style="font-size: 12px; color: #666;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script>
+        // Initialize map (Metro Manila)
+        const map = L.map('map').setView([14.5995, 120.9842], 13);
+        
+        // MINIMAL basemap style (CartoDB Positron - very clean)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap, © CartoDB',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // User location marker
+        let userLocationMarker = null;
+        
+        // Locate user button
+        document.getElementById('locateBtn').addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert('Geolocation not supported by your browser');
+                return;
+            }
+            
+            document.getElementById('locateBtn').textContent = '⏳';
+            
+            navigator.geolocation.getCurrentPosition((position) => {
+                const { latitude, longitude } = position.coords;
+                
+                // Remove old marker
+                if (userLocationMarker) {
+                    map.removeLayer(userLocationMarker);
+                }
+                
+                // Add "You are here" marker
+                const icon = L.divIcon({
+                    className: 'user-location-marker',
+                    html: '<div style="background: #4285F4; color: white; padding: 8px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">📍 You are here</div>',
+                    iconSize: [120, 40]
+                });
+                
+                userLocationMarker = L.marker([latitude, longitude], { icon })
+                    .addTo(map)
+                    .bindPopup('Your current location')
+                    .openPopup();
+                
+                // Center map
+                map.setView([latitude, longitude], 16);
+                
+                document.getElementById('locateBtn').textContent = '📍';
+            }, (error) => {
+                alert('Unable to get your location: ' + error.message);
+                document.getElementById('locateBtn').textContent = '📍';
+            }, {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            });
+        });
+        
+        // State
+        let pois = JSON.parse(localStorage.getItem('pois') || '[]');
+        let routes = JSON.parse(localStorage.getItem('routes') || '[]');
+        let tempPoiLocation = null;
+        let selectedPois = [];
+        let routeControl = null;
+        let currentRouteLayer = null;
+        let poiMarkers = {};
+        
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+                document.getElementById(`tab-${tab.dataset.tab}`).style.display = 'block';
+            });
+        });
+
+        // Mode switching
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                if (btn.dataset.mode === 'add') {
+                    document.getElementById('addPoiForm').style.display = 'block';
+                    document.getElementById('poiListView').style.display = 'none';
+                } else {
+                    document.getElementById('addPoiForm').style.display = 'none';
+                    document.getElementById('poiListView').style.display = 'block';
+                    renderPoiList();
+                }
+            });
+        });
+        
+        // Add POI - Click map
+        map.on('click', (e) => {
+            const activeTab = document.querySelector('.tab.active').dataset.tab;
+            const mode = document.querySelector('.mode-btn.active')?.dataset.mode;
+            
+            if (activeTab === 'pois' && mode === 'add') {
+                tempPoiLocation = e.latlng;
+                document.getElementById('poiStatus').textContent = `Location selected: ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+                
+                // Add temp marker
+                if (window.tempMarker) map.removeLayer(window.tempMarker);
+                window.tempMarker = L.marker(e.latlng).addTo(map)
+                    .bindPopup('New POI location').openPopup();
+            }
+        });
+        
+        // Save POI
+        document.getElementById('savePoi').addEventListener('click', () => {
+            const name = document.getElementById('poiName').value.trim();
+            const type = document.getElementById('poiType').value;
+            const notes = document.getElementById('poiNotes').value.trim();
+            const contributor = document.getElementById('poiContributor').value.trim();
+            
+            if (!name || !contributor || !tempPoiLocation) {
+                alert('Please fill name, contributor, and click map location');
+                return;
+            }
+            
+            const poi = {
+                id: Date.now(),
+                name,
+                type,
+                notes,
+                contributor,
+                lat: tempPoiLocation.lat,
+                lng: tempPoiLocation.lng,
+                created: new Date().toISOString()
+            };
+            
+            pois.push(poi);
+            localStorage.setItem('pois', JSON.stringify(pois));
+            
+            // Clear form
+            document.getElementById('poiName').value = '';
+            document.getElementById('poiNotes').value = '';
+            tempPoiLocation = null;
+            if (window.tempMarker) map.removeLayer(window.tempMarker);
+            
+            renderPois();
+            document.getElementById('poiStatus').textContent = 'POI saved! Click map to add another';
+        });
+        
+        // Render POIs on map
+        function renderPois() {
+            // Clear existing
+            Object.values(poiMarkers).forEach(m => map.removeLayer(m));
+            poiMarkers = {};
+            
+            pois.forEach(poi => {
+                const icon = L.divIcon({
+                    className: 'custom-poi-marker',
+                    html: `<div style="background: #667eea; color: white; padding: 5px 10px; border-radius: 20px; font-weight: 600; font-size: 11px; white-space: nowrap;">${poi.name}</div>`,
+                    iconSize: [100, 30]
+                });
+                
+                const marker = L.marker([poi.lat, poi.lng], { icon })
+                    .bindPopup(`
+                        <strong>${poi.name}</strong><br>
+                        <small>Type: ${poi.type}</small><br>
+                        ${poi.notes ? `<small>${poi.notes}</small><br>` : ''}
+                        <small>By: ${poi.contributor}</small>
+                    `)
+                    .addTo(map);
+                
+                marker.on('click', () => {
+                    const activeTab = document.querySelector('.tab.active').dataset.tab;
+                    if (activeTab === 'routes') {
+                        togglePoiSelection(poi);
+                    }
+                });
+                
+                poiMarkers[poi.id] = marker;
+            });
+            
+            updateStats();
+        }
+        
+        // POI selection for routes
+        function togglePoiSelection(poi) {
+            const idx = selectedPois.findIndex(p => p.id === poi.id);
+            
+            if (idx === -1) {
+                selectedPois.push(poi);
+            } else {
+                selectedPois.splice(idx, 1);
+            }
+            
+            updateSelectedPois();
+            drawRoutePreview();
+        }
+        
+        function updateSelectedPois() {
+            const container = document.getElementById('selectedPois');
+            
+            if (selectedPois.length === 0) {
+                container.innerHTML = '<span style="color: #999;">No POIs selected</span>';
+                return;
+            }
+            
+            container.innerHTML = selectedPois.map((poi, idx) => 
+                `<div style="padding: 5px; background: #e8eaff; margin-bottom: 5px; border-radius: 4px;">
+                    ${idx + 1}. ${poi.name}
+                </div>`
+            ).join('');
+            
+            document.getElementById('routeStatus').textContent = `${selectedPois.length} POIs selected`;
+        }
+        
+        // Draw route preview
+        function drawRoutePreview() {
+            if (currentRouteLayer) {
+                map.removeLayer(currentRouteLayer);
+                currentRouteLayer = null;
+            }
+            
+            if (routeControl) {
+                map.removeControl(routeControl);
+                routeControl = null;
+            }
+            
+            if (selectedPois.length < 2) return;
+            
+            const useAutoRouting = document.getElementById('useAutoRouting').checked;
+            
+            if (useAutoRouting) {
+                // Use OSRM routing
+                const waypoints = selectedPois.map(poi => L.latLng(poi.lat, poi.lng));
+                
+                routeControl = L.Routing.control({
+                    waypoints: waypoints,
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    lineOptions: {
+                        styles: [{ color: '#FFD700', weight: 6, opacity: 0.8 }],
+                        addWaypoints: false
+                    },
+                    createMarker: () => null, // Hide default markers
+                    show: false, // Hide instructions panel
+                    router: L.Routing.osrmv1({
+                        serviceUrl: 'https://router.project-osrm.org/route/v1'
+                    })
+                }).addTo(map);
+            } else {
+                // Custom straight lines
+                const latLngs = selectedPois.map(poi => [poi.lat, poi.lng]);
+                currentRouteLayer = L.polyline(latLngs, {
+                    color: '#FFD700',
+                    weight: 6,
+                    opacity: 0.8
+                }).addTo(map);
+                
+                // Add direction arrows
+                addDirectionArrows(latLngs);
+            }
+        }
+        
+        function addDirectionArrows(latLngs) {
+            for (let i = 0; i < latLngs.length - 1; i++) {
+                const start = latLngs[i];
+                const end = latLngs[i + 1];
+                const mid = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
+                
+                const angle = Math.atan2(end[1] - start[1], end[0] - start[0]) * 180 / Math.PI;
+                
+                const arrowIcon = L.divIcon({
+                    className: 'arrow-icon',
+                    html: `<div style="transform: rotate(${angle}deg); font-size: 20px;">➤</div>`,
+                    iconSize: [20, 20]
+                });
+                
+                L.marker(mid, { icon: arrowIcon }).addTo(map);
+            }
+        }
+        
+        // Save route
+        document.getElementById('saveRoute').addEventListener('click', () => {
+            const name = document.getElementById('routeName').value.trim();
+            const contributor = document.getElementById('routeContributor').value.trim();
+            
+            if (!name || !contributor || selectedPois.length < 2) {
+                alert('Please fill name, contributor, and select at least 2 POIs');
+                return;
+            }
+            
+            const route = {
+                id: Date.now(),
+                name,
+                contributor,
+                pois: selectedPois.map(p => p.id),
+                created: new Date().toISOString()
+            };
+            
+            routes.push(route);
+            localStorage.setItem('routes', JSON.stringify(routes));
+            
+            // Clear
+            document.getElementById('routeName').value = '';
+            selectedPois = [];
+            updateSelectedPois();
+            if (currentRouteLayer) map.removeLayer(currentRouteLayer);
+            if (routeControl) map.removeControl(routeControl);
+            
+            renderRouteList();
+            updateStats();
+            alert('Route saved!');
+        });
+        
+        // Clear route
+        document.getElementById('clearRoute').addEventListener('click', () => {
+            selectedPois = [];
+            updateSelectedPois();
+            if (currentRouteLayer) map.removeLayer(currentRouteLayer);
+            if (routeControl) map.removeControl(routeControl);
+        });
+        
+        // Render POI list
+        function renderPoiList() {
+            const list = document.getElementById('poiList');
+            
+            if (pois.length === 0) {
+                list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📍</div>No POIs yet</div>';
+                return;
+            }
+            
+            list.innerHTML = pois.map(poi => `
+                <div class="poi-item" onclick="map.setView([${poi.lat}, ${poi.lng}], 16)">
+                    <div class="poi-name">${poi.name}</div>
+                    <div class="poi-meta">
+                        ${poi.type} • By ${poi.contributor}
+                        ${poi.notes ? `<br>${poi.notes}` : ''}
+                    </div>
+                    <div class="poi-actions">
+                        <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deletePoi(${poi.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Delete POI
+        window.deletePoi = (id) => {
+            if (!confirm('Delete this POI?')) return;
+            pois = pois.filter(p => p.id !== id);
+            localStorage.setItem('pois', JSON.stringify(pois));
+            renderPois();
+            renderPoiList();
+        };
+        
+        // Render route list
+        function renderRouteList() {
+            const list = document.getElementById('routeList');
+            
+            if (routes.length === 0) {
+                list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🛣️</div>No routes yet</div>';
+                return;
+            }
+            
+            list.innerHTML = routes.map(route => {
+                const routePois = route.pois.map(id => pois.find(p => p.id === id)).filter(Boolean);
+                return `
+                    <div class="route-item">
+                        <div class="poi-name">${route.name}</div>
+                        <div class="poi-meta">
+                            ${routePois.length} stops • By ${route.contributor}
+                        </div>
+                        <div class="poi-actions">
+                            <button class="btn btn-primary btn-small" onclick="viewRoute(${route.id})">View</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteRoute(${route.id})">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // View route
+        window.viewRoute = (id) => {
+            const route = routes.find(r => r.id === id);
+            if (!route) return;
+            
+            const routePois = route.pois.map(id => pois.find(p => p.id === id)).filter(Boolean);
+            selectedPois = routePois;
+            updateSelectedPois();
+            drawRoutePreview();
+            
+            // Switch to routes tab
+            document.querySelector('.tab[data-tab="routes"]').click();
+        };
+        
+        // Delete route
+        window.deleteRoute = (id) => {
+            if (!confirm('Delete this route?')) return;
+            routes = routes.filter(r => r.id !== id);
+            localStorage.setItem('routes', JSON.stringify(routes));
+            renderRouteList();
+            updateStats();
+        };
+        
+        // Export
+        document.getElementById('exportJson').addEventListener('click', () => {
+            const data = { pois, routes, exported: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `jeepney-data-${Date.now()}.json`;
+            a.click();
+        });
+        
+        // Import
+        document.getElementById('importJson').addEventListener('click', () => {
+            const file = document.getElementById('importFile').files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    pois = data.pois || [];
+                    routes = data.routes || [];
+                    localStorage.setItem('pois', JSON.stringify(pois));
+                    localStorage.setItem('routes', JSON.stringify(routes));
+                    renderPois();
+                    renderRouteList();
+                    updateStats();
+                    alert('Data imported!');
+                } catch (err) {
+                    alert('Invalid JSON file');
+                }
+            };
+            reader.readAsText(file);
+        });
+        
+        // Stats
+        function updateStats() {
+            const stats = document.getElementById('stats');
+            stats.innerHTML = `
+                <strong>Total POIs:</strong> ${pois.length}<br>
+                <strong>Total Routes:</strong> ${routes.length}<br>
+                <strong>Last updated:</strong> ${new Date().toLocaleString()}
+            `;
+        }
+        
+        // Initialize
+        renderPois();
+        renderRouteList();
+        updateStats();
+    </script>
+</body>
+</html>
