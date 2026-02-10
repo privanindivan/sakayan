@@ -518,7 +518,8 @@
         <div class="waypoint-counter" id="waypointCounter">0 waypoints</div>
 
         <div class="form-group">
-            <label class="form-label">Waypoint Names (optional)</label>
+            <label class="form-label">Waypoint Names (required)</label>
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">⚠️ All waypoint names must be filled to save</div>
             <div id="waypointInputs"></div>
         </div>
 
@@ -643,15 +644,21 @@
         } else if (extendMode && extendMode.mode === 'start') {
             // Add at beginning
             addWaypoint(e.latlng, 'prepend');
-            extendMode = null;
+            extendMode = null; // Reset - must click pinpoint again
+            alert('✅ Waypoint added at START. Click a pinpoint again to continue extending.');
         } else if (extendMode && extendMode.mode === 'end') {
             // Add at end
             addWaypoint(e.latlng, 'append');
-            extendMode = null;
+            extendMode = null; // Reset - must click pinpoint again
+            alert('✅ Waypoint added at END. Click a pinpoint again to continue extending.');
         } else if (extendMode && extendMode.mode === 'insert') {
             // Insert after specific waypoint
             addWaypoint(e.latlng, 'insert', extendMode.afterIndex);
-            extendMode = null;
+            extendMode = null; // Reset - must click pinpoint again
+            alert('✅ Waypoint inserted. Click a pinpoint again to continue extending.');
+        } else {
+            // Not in extend mode and waypoints exist - do nothing
+            alert('⚠️ Click an existing pinpoint first to choose where to extend from');
         }
     });
 
@@ -673,14 +680,14 @@
             
             if (markerIndex === 0) {
                 extendMode = {mode: 'start'};
-                alert('Tap map to add waypoint BEFORE start');
+                alert('📍 Extend mode: START\n\nTap the map to add a waypoint BEFORE the start point.');
             } else if (markerIndex === waypoints.length - 1) {
                 extendMode = {mode: 'end'};
-                alert('Tap map to add waypoint AFTER end');
+                alert('📍 Extend mode: END\n\nTap the map to add a waypoint AFTER the end point.');
             } else {
                 // Middle waypoint - insert after
                 extendMode = {mode: 'insert', afterIndex: markerIndex};
-                alert(`Tap map to insert waypoint AFTER stop ${markerIndex}`);
+                alert(`📍 Extend mode: AFTER Stop ${markerIndex}\n\nTap the map to insert a waypoint after this stop.`);
             }
         });
 
@@ -743,11 +750,25 @@
             input.type = 'text';
             input.className = 'form-input';
             const label = idx === 0 ? 'Start' : (idx === waypoints.length - 1 ? 'End' : `Stop ${idx}`);
-            input.placeholder = `${label} name (optional)`;
+            input.placeholder = `${label} name (required)`;
             input.value = wp.name;
             input.style.marginBottom = '8px';
+            input.required = true;
+            
+            // Visual indicator if empty
+            if (!wp.name || wp.name.trim() === '') {
+                input.style.borderColor = '#ff6b6b';
+                input.style.borderWidth = '2px';
+            }
+            
             input.oninput = (e) => { 
                 waypoints[idx].name = e.target.value;
+                // Update border color based on filled status
+                if (e.target.value.trim()) {
+                    e.target.style.borderColor = '#4CAF50';
+                } else {
+                    e.target.style.borderColor = '#ff6b6b';
+                }
                 updateAllMarkers(); // Update labels on map
             };
             container.appendChild(input);
@@ -958,12 +979,19 @@
     function saveRoute() {
         const contributor = document.getElementById('contributorName').value.trim();
         if (!contributor) {
-            alert('Please enter your name');
+            alert('⚠️ Please enter your name');
             return;
         }
         
         if (waypoints.length < 2) {
-            alert('Please add at least 2 waypoints');
+            alert('⚠️ Please add at least 2 waypoints');
+            return;
+        }
+
+        // Check all waypoints have names
+        const emptyNames = waypoints.filter(wp => !wp.name || wp.name.trim() === '');
+        if (emptyNames.length > 0) {
+            alert('⚠️ All waypoint names are required. Please fill all names.');
             return;
         }
 
@@ -978,11 +1006,11 @@
             let savedRoutes = JSON.parse(localStorage.getItem('sakayanRoutes') || '[]');
             savedRoutes.push(route);
             localStorage.setItem('sakayanRoutes', JSON.stringify(savedRoutes));
-            alert(`✅ Route saved! Total: ${savedRoutes.length}`);
+            alert(`✅ Route saved successfully!\n\nRoute: ${waypoints[0].name} → ${waypoints[waypoints.length-1].name}\nTotal saved routes: ${savedRoutes.length}`);
             closeBottomSheet();
         } catch (error) {
             console.error('Save error:', error);
-            alert('Failed to save route');
+            alert('❌ Failed to save route. Please try again.');
         }
     }
 
