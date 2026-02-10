@@ -3,393 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PH Transport Route Mapper</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <title>PH Jeepney Mapper - Choose View</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        #map { height: 100vh; width: 100%; }
-        
-        .controls {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: white;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #FF6B6B 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-            min-width: 280px;
         }
         
-        h2 { font-size: 18px; margin-bottom: 15px; color: #333; }
+        .container {
+            max-width: 800px;
+            text-align: center;
+        }
         
-        .form-group {
+        h1 {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 18px;
+            margin-bottom: 40px;
+        }
+        
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-decoration: none;
+            color: #333;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .card-icon {
+            font-size: 64px;
             margin-bottom: 15px;
         }
         
-        label {
-            display: block;
-            font-size: 13px;
+        .card-title {
+            font-size: 24px;
             font-weight: 600;
-            color: #555;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
         }
         
-        input, select {
-            width: 100%;
-            padding: 8px 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        .card-desc {
             font-size: 14px;
-        }
-        
-        .vehicle-types {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-        
-        .vehicle-btn {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        
-        .vehicle-btn:hover { background: #f5f5f5; }
-        
-        .vehicle-btn.active {
-            border-color: #4CAF50;
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
-            transition: all 0.2s;
-        }
-        
-        .btn-primary {
-            background: #2196F3;
-            color: white;
-        }
-        
-        .btn-primary:hover { background: #1976D2; }
-        
-        .btn-success {
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .btn-success:hover { background: #388E3C; }
-        
-        .btn-danger {
-            background: #f44336;
-            color: white;
-        }
-        
-        .btn-danger:hover { background: #d32f2f; }
-        
-        .btn-secondary {
-            background: #9E9E9E;
-            color: white;
-        }
-        
-        .btn-secondary:hover { background: #757575; }
-        
-        .route-list {
-            margin-top: 20px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .route-item {
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .route-item:hover { background: #f5f5f5; }
-        
-        .route-item.active {
-            border-color: #2196F3;
-            background: #E3F2FD;
-        }
-        
-        .route-name {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-        
-        .route-meta {
-            font-size: 12px;
             color: #666;
+            line-height: 1.5;
         }
         
         .badge {
             display: inline-block;
-            padding: 2px 8px;
+            padding: 4px 12px;
             border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-right: 5px;
-        }
-        
-        .badge-jeepney { background: #FFD700; color: #333; }
-        .badge-tricycle { background: #4CAF50; color: white; }
-        .badge-uv { background: #2196F3; color: white; }
-        
-        .status {
             font-size: 12px;
-            color: #666;
+            font-weight: 600;
             margin-top: 10px;
-            padding: 8px;
-            background: #f5f5f5;
-            border-radius: 4px;
-            text-align: center;
         }
         
-        .divider {
-            border-top: 1px solid #eee;
-            margin: 15px 0;
+        .badge-clean {
+            background: #E8EAFF;
+            color: #667eea;
+        }
+        
+        .badge-full {
+            background: #FFE5E5;
+            color: #FF6B6B;
+        }
+        
+        .footer {
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            margin-top: 30px;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 600px) {
+            h1 { font-size: 36px; }
+            .subtitle { font-size: 16px; }
         }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    
-    <div class="controls">
-        <h2>🚌 Route Mapper</h2>
+    <div class="container">
+        <h1>🚌 PH Jeepney Mapper</h1>
+        <p class="subtitle">Crowdsourced mapping for informal public transport routes in the Philippines</p>
         
-        <div class="form-group">
-            <label>Route Name</label>
-            <input type="text" id="routeName" placeholder="e.g., Quiapo - Cubao">
-        </div>
-        
-        <div class="form-group">
-            <label>Vehicle Type</label>
-            <div class="vehicle-types">
-                <button class="vehicle-btn active" data-type="jeepney">🚌 Jeepney</button>
-                <button class="vehicle-btn" data-type="tricycle">🛺 Tricycle</button>
-                <button class="vehicle-btn" data-type="uv">🚐 UV</button>
-            </div>
-        </div>
-        
-        <button class="btn btn-success" id="saveRoute">💾 Save Route</button>
-        <button class="btn btn-danger" id="clearRoute">🗑️ Clear Current</button>
-        <button class="btn btn-secondary" id="exportData">📤 Export JSON</button>
-        
-        <div class="status" id="status">Click map to add stops</div>
-        
-        <div class="divider"></div>
-        
-        <div class="route-list" id="routeList"></div>
-    </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // Initialize map (centered on Metro Manila)
-        const map = L.map('map').setView([14.5995, 120.9842], 13);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
-        
-        // State
-        let currentRoute = {
-            name: '',
-            type: 'jeepney',
-            stops: [],
-            polyline: null
-        };
-        
-        let savedRoutes = JSON.parse(localStorage.getItem('routes') || '[]');
-        let markers = [];
-        
-        // Vehicle type selection
-        document.querySelectorAll('.vehicle-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.vehicle-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentRoute.type = btn.dataset.type;
-            });
-        });
-        
-        // Map click - add stop
-        map.on('click', (e) => {
-            const { lat, lng } = e.latlng;
-            currentRoute.stops.push([lat, lng]);
-            
-            // Add marker
-            const marker = L.marker([lat, lng])
-                .bindPopup(`Stop ${currentRoute.stops.length}`)
-                .addTo(map);
-            markers.push(marker);
-            
-            // Draw route line
-            if (currentRoute.stops.length > 1) {
-                if (currentRoute.polyline) {
-                    map.removeLayer(currentRoute.polyline);
-                }
-                
-                const color = {
-                    jeepney: '#FFD700',
-                    tricycle: '#4CAF50',
-                    uv: '#2196F3'
-                }[currentRoute.type];
-                
-                currentRoute.polyline = L.polyline(currentRoute.stops, {
-                    color: color,
-                    weight: 4,
-                    opacity: 0.7
-                }).addTo(map);
-            }
-            
-            updateStatus();
-        });
-        
-        // Save route
-        document.getElementById('saveRoute').addEventListener('click', () => {
-            const name = document.getElementById('routeName').value.trim();
-            
-            if (!name) {
-                alert('Please enter a route name');
-                return;
-            }
-            
-            if (currentRoute.stops.length < 2) {
-                alert('Please add at least 2 stops');
-                return;
-            }
-            
-            savedRoutes.push({
-                name: name,
-                type: currentRoute.type,
-                stops: currentRoute.stops,
-                created: new Date().toISOString()
-            });
-            
-            localStorage.setItem('routes', JSON.stringify(savedRoutes));
-            
-            document.getElementById('routeName').value = '';
-            clearCurrentRoute();
-            renderRouteList();
-            updateStatus('Route saved!');
-        });
-        
-        // Clear current route
-        document.getElementById('clearRoute').addEventListener('click', () => {
-            clearCurrentRoute();
-        });
-        
-        function clearCurrentRoute() {
-            currentRoute.stops = [];
-            
-            markers.forEach(m => map.removeLayer(m));
-            markers = [];
-            
-            if (currentRoute.polyline) {
-                map.removeLayer(currentRoute.polyline);
-                currentRoute.polyline = null;
-            }
-            
-            updateStatus();
-        }
-        
-        // Export data
-        document.getElementById('exportData').addEventListener('click', () => {
-            const data = JSON.stringify(savedRoutes, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `jeepney-routes-${Date.now()}.json`;
-            a.click();
-            updateStatus('Exported!');
-        });
-        
-        // Render saved routes
-        function renderRouteList() {
-            const list = document.getElementById('routeList');
-            
-            if (savedRoutes.length === 0) {
-                list.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">No saved routes yet</div>';
-                return;
-            }
-            
-            list.innerHTML = savedRoutes.map((route, idx) => `
-                <div class="route-item" onclick="viewRoute(${idx})">
-                    <div class="route-name">${route.name}</div>
-                    <div class="route-meta">
-                        <span class="badge badge-${route.type}">${route.type}</span>
-                        ${route.stops.length} stops
-                    </div>
+        <div class="cards">
+            <a href="clean.html" class="card">
+                <div class="card-icon">🗺️</div>
+                <div class="card-title">Clean View</div>
+                <div class="card-desc">
+                    Minimal map tiles with ONLY your contributed POIs. 
+                    Perfect for focused data entry and mapping work.
                 </div>
-            `).join('');
-        }
+                <div class="badge badge-clean">Recommended for mapping</div>
+            </a>
+            
+            <a href="full.html" class="card">
+                <div class="card-icon">🌍</div>
+                <div class="card-title">Full OSM View</div>
+                <div class="card-desc">
+                    Standard OpenStreetMap with all default POIs visible. 
+                    Great for context and comparing with existing infrastructure.
+                </div>
+                <div class="badge badge-full">Best for reference</div>
+            </a>
+        </div>
         
-        // View saved route
-        window.viewRoute = (idx) => {
-            const route = savedRoutes[idx];
-            
-            clearCurrentRoute();
-            
-            // Draw route
-            const color = {
-                jeepney: '#FFD700',
-                tricycle: '#4CAF50',
-                uv: '#2196F3'
-            }[route.type];
-            
-            const polyline = L.polyline(route.stops, {
-                color: color,
-                weight: 4,
-                opacity: 0.7
-            }).addTo(map);
-            
-            route.stops.forEach((stop, i) => {
-                L.marker(stop)
-                    .bindPopup(`${route.name}<br>Stop ${i + 1}`)
-                    .addTo(map);
-            });
-            
-            map.fitBounds(polyline.getBounds());
-            updateStatus(`Viewing: ${route.name}`);
-        };
-        
-        // Update status
-        function updateStatus(msg) {
-            const status = document.getElementById('status');
-            if (msg) {
-                status.textContent = msg;
-                setTimeout(() => updateStatus(), 2000);
-            } else {
-                status.textContent = `${currentRoute.stops.length} stops added`;
-            }
-        }
-        
-        // Initial render
-        renderRouteList();
-        updateStatus();
-    </script>
+        <div class="footer">
+            <strong>Features:</strong> GPS Location • Auto-routing • Crowdsourced Data • Export/Import JSON<br>
+            <a href="https://github.com/privan/jeepney-mapper" target="_blank">View on GitHub</a>
+        </div>
+    </div>
 </body>
 </html>
