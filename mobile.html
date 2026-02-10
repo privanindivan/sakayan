@@ -469,9 +469,9 @@
     <div class="hint-text">📍 Tap to add waypoints</div>
 </div>
 
-<div class="swipe-tab" id="swipeTab" onclick="openBottomSheet()">
-    <div style="width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 8px;"></div>
-    <div style="font-size: 13px; color: #666; font-weight: 600;">⬆️ Swipe up for details</div>
+<div class="swipe-tab" id="swipeTab">
+    <div style="width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 8px; cursor: grab;"></div>
+    <div style="font-size: 13px; color: #666; font-weight: 600;">⬆️ Swipe up this to add/edit info</div>
 </div>
 
 <div class="bottom-sheet" id="bottomSheet">
@@ -531,6 +531,7 @@
     let selectedVehicle = 'jeepney';
     let selectedFromPOI = null;
     let selectedToPOI = null;
+    let extendMode = null; // 'start' or 'end' - which end to extend from
 
     const knownPOIs = [
         { name: 'Cubao', lat: 14.6191, lng: 121.0509 },
@@ -591,20 +592,6 @@
         }
     }
 
-    function createMarker(latlng, index) {
-        const isStart = index === 0;
-        const isEnd = index === waypoints.length - 1;
-        const markerClass = isStart ? 'start-marker' : (isEnd ? 'end-marker' : 'waypoint-marker');
-        
-        return L.marker(latlng, {
-            icon: L.divIcon({
-                html: `<div class="custom-marker ${markerClass}"></div>`,
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
-            })
-        });
-    }
-
     map.on('click', function(e) {
         // If sheet is open, close it when clicking map
         if (sheet.classList.contains('visible')) {
@@ -614,12 +601,57 @@
         
         if (!addModeActive) return;
 
-        const { lat, lng } = e.latlng;
-        const marker = createMarker([lat, lng], waypoints.length);
-        marker.on('click', () => openBottomSheet());
-        marker.addTo(map);
+        // Only allow adding points in extend mode or if no points exist
+        if (waypoints.length === 0) {
+            // First point - add start
+            addWaypoint(e.latlng, 'start');
+        } else if (extendMode === 'start') {
+            // Add at beginning
+            addWaypoint(e.latlng, 'prepend');
+            extendMode = null;
+        } else if (extendMode === 'end') {
+            // Add at end
+            addWaypoint(e.latlng, 'append');
+            extendMode = null;
+        }
+    });
 
-        waypoints.push({ latlng: [lat, lng], marker: marker, name: '' });
+    function addWaypoint(latlng, position) {
+        const { lat, lng } = latlng;
+        const marker = L.marker([lat, lng], {
+            icon: L.divIcon({
+                html: '<div class="custom-marker start-marker"></div>',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            })
+        }).addTo(map);
+        
+        // Click marker to extend from it
+        marker.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            const markerIndex = waypoints.findIndex(wp => wp.marker === marker);
+            if (markerIndex === 0) {
+                extendMode = 'start';
+                alert('Tap map to add waypoint at START');
+            } else if (markerIndex === waypoints.length - 1) {
+                extendMode = 'end';
+                alert('Tap map to add waypoint at END');
+            } else {
+                openBottomSheet();
+            }
+        });
+
+        const newWaypoint = { latlng: [lat, lng], marker: marker, name: '' };
+
+        if (position === 'start' || waypoints.length === 0) {
+            waypoints.push(newWaypoint);
+        } else if (position === 'prepend') {
+            waypoints.unshift(newWaypoint);
+        } else if (position === 'append') {
+            waypoints.push(newWaypoint);
+        }
+
+        updateAllMarkers();
         updateWaypointCounter();
         updateWaypointInputs();
         
@@ -627,7 +659,22 @@
             calculateRoute();
             document.getElementById('swipeTab').classList.add('visible');
         }
-    });
+    }
+
+    function updateAllMarkers() {
+        waypoints.forEach((wp, idx) => {
+            const isStart = idx === 0;
+            const isEnd = idx === waypoints.length - 1;
+            const markerClass = isStart ? 'start-marker' : (isEnd ? 'end-marker' : 'waypoint-marker');
+            
+            // Update marker icon
+            wp.marker.setIcon(L.divIcon({
+                html: `<div class="custom-marker ${markerClass}"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            }));
+        });
+    }
 
     function updateWaypointCounter() {
         document.getElementById('waypointCounter').textContent = `${waypoints.length} waypoint${waypoints.length !== 1 ? 's' : ''}`;
@@ -765,27 +812,30 @@
         closeSearchOverlay();
         clearAll();
         
-        waypoints = [
-            { latlng: [fromPOI.lat, fromPOI.lng], name: fromPOI.name, marker: null },
-            { latlng: [toPOI.lat, toPOI.lng], name: toPOI.name, marker: null }
-        ];
+        // Add from and to points
+        addWaypoint(L.latLng(fromPOI.lat, fromPOI.lng), 'start');
+        waypoints[0].name = fromPOI.name;
         
-        waypoints.forEach((wp, idx) => {
-            wp.marker = createMarker(wp.latlng, idx);
-            wp.marker.on('click', () => openBottomSheet());
-            wp.marker.addTo(map);
-        });
+        addWaypoint(L.latLng(toPOI.lat, toPOI.lng), 'append');
+        waypoints[1].name = toPOI.name;
         
-        updateWaypointCounter();
         updateWaypointInputs();
-        calculateRoute();
-        document.getElementById('swipeTab').classList.add('visible');
     }
 
     let startY = 0, currentY = 0, isDragging = false;
     const handle = document.getElementById('sheetHandle');
     const sheet = document.getElementById('bottomSheet');
     const swipeTab = document.getElementById('swipeTab');
+
+    // Swipe tab to open sheet
+    swipeTab.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        startY = e.touches[0].clientY;
+    });
+
+    swipeTab.addEventListener('click', () => {
+        openBottomSheet();
+    });
 
     handle.addEventListener('touchstart', (e) => {
         isDragging = true;
@@ -796,7 +846,16 @@
         if (!isDragging) return;
         currentY = e.touches[0].clientY;
         const diff = currentY - startY;
-        if (diff > 0) sheet.style.transform = `translateY(${diff}px)`;
+        
+        // If swiping from tab (sheet not visible), open on swipe up
+        if (!sheet.classList.contains('visible') && diff < -50) {
+            openBottomSheet();
+            isDragging = false;
+        }
+        // If sheet is open, allow dragging down
+        else if (sheet.classList.contains('visible') && diff > 0) {
+            sheet.style.transform = `translateY(${diff}px)`;
+        }
     });
 
     document.addEventListener('touchend', () => {
