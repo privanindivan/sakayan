@@ -241,12 +241,47 @@
             margin-top: 12px;
         }
 
+        .marker-container {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .marker-label {
+            background: white;
+            padding: 4px 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            margin-bottom: 4px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .start-label {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .end-label {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .mid-label {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
         .custom-marker {
             width: 16px;
             height: 16px;
             border-radius: 50%;
             border: 2px solid white;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            margin: 0 auto;
         }
 
         .start-marker {
@@ -605,39 +640,47 @@
         if (waypoints.length === 0) {
             // First point - add start
             addWaypoint(e.latlng, 'start');
-        } else if (extendMode === 'start') {
+        } else if (extendMode && extendMode.mode === 'start') {
             // Add at beginning
             addWaypoint(e.latlng, 'prepend');
             extendMode = null;
-        } else if (extendMode === 'end') {
+        } else if (extendMode && extendMode.mode === 'end') {
             // Add at end
             addWaypoint(e.latlng, 'append');
+            extendMode = null;
+        } else if (extendMode && extendMode.mode === 'insert') {
+            // Insert after specific waypoint
+            addWaypoint(e.latlng, 'insert', extendMode.afterIndex);
             extendMode = null;
         }
     });
 
-    function addWaypoint(latlng, position) {
+    function addWaypoint(latlng, position, insertAfterIndex = null) {
         const { lat, lng } = latlng;
         const marker = L.marker([lat, lng], {
             icon: L.divIcon({
+                className: 'marker-container',
                 html: '<div class="custom-marker start-marker"></div>',
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+                iconSize: [16, 40],
+                iconAnchor: [8, 40]
             })
         }).addTo(map);
         
-        // Click marker to extend from it
+        // Click marker to extend from it or insert after it
         marker.on('click', (e) => {
             L.DomEvent.stopPropagation(e);
             const markerIndex = waypoints.findIndex(wp => wp.marker === marker);
+            
             if (markerIndex === 0) {
-                extendMode = 'start';
-                alert('Tap map to add waypoint at START');
+                extendMode = {mode: 'start'};
+                alert('Tap map to add waypoint BEFORE start');
             } else if (markerIndex === waypoints.length - 1) {
-                extendMode = 'end';
-                alert('Tap map to add waypoint at END');
+                extendMode = {mode: 'end'};
+                alert('Tap map to add waypoint AFTER end');
             } else {
-                openBottomSheet();
+                // Middle waypoint - insert after
+                extendMode = {mode: 'insert', afterIndex: markerIndex};
+                alert(`Tap map to insert waypoint AFTER stop ${markerIndex}`);
             }
         });
 
@@ -649,6 +692,8 @@
             waypoints.unshift(newWaypoint);
         } else if (position === 'append') {
             waypoints.push(newWaypoint);
+        } else if (position === 'insert' && insertAfterIndex !== null) {
+            waypoints.splice(insertAfterIndex + 1, 0, newWaypoint);
         }
 
         updateAllMarkers();
@@ -666,12 +711,21 @@
             const isStart = idx === 0;
             const isEnd = idx === waypoints.length - 1;
             const markerClass = isStart ? 'start-marker' : (isEnd ? 'end-marker' : 'waypoint-marker');
+            const labelClass = isStart ? 'start-label' : (isEnd ? 'end-label' : 'mid-label');
+            
+            const label = wp.name ? `<div class="marker-label ${labelClass}">${wp.name}</div>` : '';
             
             // Update marker icon
             wp.marker.setIcon(L.divIcon({
-                html: `<div class="custom-marker ${markerClass}"></div>`,
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+                className: 'marker-container',
+                html: `
+                    <div style="text-align: center;">
+                        ${label}
+                        <div class="custom-marker ${markerClass}"></div>
+                    </div>
+                `,
+                iconSize: [120, 50],
+                iconAnchor: [60, 50]
             }));
         });
     }
@@ -692,7 +746,10 @@
             input.placeholder = `${label} name (optional)`;
             input.value = wp.name;
             input.style.marginBottom = '8px';
-            input.oninput = (e) => { waypoints[idx].name = e.target.value; };
+            input.oninput = (e) => { 
+                waypoints[idx].name = e.target.value;
+                updateAllMarkers(); // Update labels on map
+            };
             container.appendChild(input);
         });
     }
