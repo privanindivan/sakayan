@@ -241,61 +241,6 @@
             margin-top: 12px;
         }
 
-        /* SMALLER markers with chat bubble labels */
-        .waypoint-label {
-            background: white;
-            padding: 6px 10px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-            font-size: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            position: relative;
-        }
-
-        .waypoint-label::after {
-            content: '';
-            position: absolute;
-            bottom: -6px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 6px solid white;
-        }
-
-        .start-label {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .start-label::after {
-            border-top-color: #e8f5e9;
-        }
-
-        .end-label {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        .end-label::after {
-            border-top-color: #ffebee;
-        }
-
-        .waypoint-label-mid {
-            background: #fff3e0;
-            color: #e65100;
-        }
-
-        .waypoint-label-mid::after {
-            border-top-color: #fff3e0;
-        }
-
         .custom-marker {
             width: 16px;
             height: 16px;
@@ -409,9 +354,6 @@
             border-radius: 8px;
             margin-bottom: 8px;
             cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
         .poi-item:active {
@@ -421,11 +363,6 @@
         .poi-name {
             font-weight: 600;
             font-size: 14px;
-        }
-
-        .poi-distance {
-            font-size: 12px;
-            color: #666;
         }
 
         .loading-overlay {
@@ -474,7 +411,7 @@
             right: 0;
             z-index: 999;
             background: white;
-            padding: 8px 0;
+            padding: 12px 0;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
             text-align: center;
             cursor: pointer;
@@ -496,13 +433,8 @@
 
 <div id="map"></div>
 
-<button class="location-btn" onclick="goToMyLocation()" title="My Location">
-    📍
-</button>
-
-<button class="location-btn" onclick="openSearchOverlay()" title="Search Routes" style="left: 80px;">
-    🔍
-</button>
+<button class="location-btn" onclick="goToMyLocation()">📍</button>
+<button class="location-btn" onclick="openSearchOverlay()" style="left: 80px;">🔍</button>
 
 <div class="toggle-container">
     <span class="toggle-label">➕ Add Route</span>
@@ -530,9 +462,6 @@
         <div class="poi-suggestions" id="toSuggestions"></div>
         
         <button class="search-btn" onclick="searchRoutes()">🔍 Find Routes</button>
-        <div style="padding: 12px; background: #f0f9ff; border-radius: 8px; font-size: 12px; color: #666; margin-top: 12px;">
-            💡 We'll find nearest stops and show walking directions
-        </div>
     </div>
 </div>
 
@@ -551,26 +480,19 @@
     </div>
     <div class="sheet-content">
         <div class="sheet-title">Route Details</div>
-
         <div class="waypoint-counter" id="waypointCounter">0 waypoints</div>
 
         <div class="form-group">
-            <label class="form-label">Waypoint Names (shown above markers)</label>
+            <label class="form-label">Waypoint Names (optional)</label>
             <div id="waypointInputs"></div>
         </div>
 
         <div class="form-group">
             <label class="form-label">Vehicle Type</label>
             <div class="vehicle-types">
-                <button class="vehicle-btn active" data-type="jeepney" onclick="selectVehicle('jeepney')">
-                    🚌 Jeepney
-                </button>
-                <button class="vehicle-btn" data-type="tricycle" onclick="selectVehicle('tricycle')">
-                    🛺 Tricycle
-                </button>
-                <button class="vehicle-btn" data-type="puv" onclick="selectVehicle('puv')">
-                    🚐 UV
-                </button>
+                <button class="vehicle-btn active" data-type="jeepney" onclick="selectVehicle('jeepney')">🚌 Jeepney</button>
+                <button class="vehicle-btn" data-type="tricycle" onclick="selectVehicle('tricycle')">🛺 Tricycle</button>
+                <button class="vehicle-btn" data-type="puv" onclick="selectVehicle('puv')">🚐 UV</button>
             </div>
         </div>
 
@@ -595,7 +517,6 @@
 
 <script>
     const map = L.map('map').setView([14.5995, 120.9842], 13);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
         maxZoom: 19
@@ -623,7 +544,6 @@
         { name: 'Makati', lat: 14.5547, lng: 121.0244 }
     ];
 
-    // Get location on load
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -638,7 +558,6 @@
                     })
                 }).addTo(map);
                 
-                // Set default FROM to My Location
                 document.getElementById('searchFrom').value = 'My Location';
                 selectedFromPOI = { name: 'My Location', lat: latitude, lng: longitude };
             }
@@ -651,12 +570,8 @@
                 (position) => {
                     const { latitude, longitude } = position.coords;
                     map.setView([latitude, longitude], 16, { animate: true });
-                    
-                    if (userLocationMarker) {
-                        userLocationMarker.setLatLng([latitude, longitude]);
-                    }
-                },
-                () => alert('Could not get location')
+                    if (userLocationMarker) userLocationMarker.setLatLng([latitude, longitude]);
+                }
             );
         }
     }
@@ -675,24 +590,16 @@
         }
     }
 
-    function createMarkerWithLabel(latlng, index, name) {
+    function createMarker(latlng, index) {
         const isStart = index === 0;
         const isEnd = index === waypoints.length - 1;
         const markerClass = isStart ? 'start-marker' : (isEnd ? 'end-marker' : 'waypoint-marker');
-        const labelClass = isStart ? 'start-label' : (isEnd ? 'end-label' : 'waypoint-label-mid');
-        
-        const labelHtml = name ? `<div class="waypoint-label ${labelClass}">${name}</div>` : '';
         
         return L.marker(latlng, {
             icon: L.divIcon({
-                html: `
-                    <div style="position: relative; text-align: center;">
-                        <div style="margin-bottom: 8px;">${labelHtml}</div>
-                        <div class="custom-marker ${markerClass}" style="margin: 0 auto;"></div>
-                    </div>
-                `,
-                iconSize: [150, 50],
-                iconAnchor: [75, 50]
+                html: `<div class="custom-marker ${markerClass}"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
             })
         });
     }
@@ -701,39 +608,19 @@
         if (!addModeActive) return;
 
         const { lat, lng } = e.latlng;
-        const index = waypoints.length;
-        
-        const marker = createMarkerWithLabel([lat, lng], index, '');
-
-        marker.on('click', function() {
-            openBottomSheet();
-        });
-
+        const marker = createMarker([lat, lng], waypoints.length);
+        marker.on('click', () => openBottomSheet());
         marker.addTo(map);
 
         waypoints.push({ latlng: [lat, lng], marker: marker, name: '' });
-        
         updateWaypointCounter();
         updateWaypointInputs();
         
         if (waypoints.length >= 2) {
             calculateRoute();
-            openBottomSheet();
+            document.getElementById('swipeTab').classList.add('visible');
         }
     });
-
-    function updateMarkerLabel(index) {
-        const wp = waypoints[index];
-        if (!wp) return;
-        
-        // Remove old marker
-        map.removeLayer(wp.marker);
-        
-        // Create new marker with updated label
-        wp.marker = createMarkerWithLabel(wp.latlng, index, wp.name);
-        wp.marker.on('click', () => openBottomSheet());
-        wp.marker.addTo(map);
-    }
 
     function updateWaypointCounter() {
         document.getElementById('waypointCounter').textContent = `${waypoints.length} waypoint${waypoints.length !== 1 ? 's' : ''}`;
@@ -747,28 +634,22 @@
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'form-input';
-            
             const label = idx === 0 ? 'Start' : (idx === waypoints.length - 1 ? 'End' : `Stop ${idx}`);
-            input.placeholder = `${label} name (e.g., Cubao Terminal)`;
+            input.placeholder = `${label} name (optional)`;
             input.value = wp.name;
             input.style.marginBottom = '8px';
-            input.oninput = (e) => {
-                waypoints[idx].name = e.target.value;
-                updateMarkerLabel(idx);
-            };
+            input.oninput = (e) => { waypoints[idx].name = e.target.value; };
             container.appendChild(input);
         });
     }
 
     async function calculateRoute() {
         if (waypoints.length < 2) return;
-
         showLoading(true);
 
         try {
             const coords = waypoints.map(wp => `${wp.latlng[1]},${wp.latlng[0]}`).join(';');
             const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
-            
             const response = await fetch(url);
             const data = await response.json();
 
@@ -778,7 +659,6 @@
         } catch (error) {
             console.error('Route error:', error);
         }
-
         showLoading(false);
     }
 
@@ -787,7 +667,6 @@
         routeLines = [];
 
         const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        
         const polyline = L.polyline(coordinates, {
             color: '#4CAF50',
             weight: 5,
@@ -885,7 +764,7 @@
         ];
         
         waypoints.forEach((wp, idx) => {
-            wp.marker = createMarkerWithLabel(wp.latlng, idx, wp.name);
+            wp.marker = createMarker(wp.latlng, idx);
             wp.marker.on('click', () => openBottomSheet());
             wp.marker.addTo(map);
         });
@@ -893,14 +772,10 @@
         updateWaypointCounter();
         updateWaypointInputs();
         calculateRoute();
-        openBottomSheet();
+        document.getElementById('swipeTab').classList.add('visible');
     }
 
-    // Sheet swipe
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-
+    let startY = 0, currentY = 0, isDragging = false;
     const handle = document.getElementById('sheetHandle');
     const sheet = document.getElementById('bottomSheet');
     const swipeTab = document.getElementById('swipeTab');
@@ -914,16 +789,12 @@
         if (!isDragging) return;
         currentY = e.touches[0].clientY;
         const diff = currentY - startY;
-        
-        if (diff > 0) {
-            sheet.style.transform = `translateY(${diff}px)`;
-        }
+        if (diff > 0) sheet.style.transform = `translateY(${diff}px)`;
     });
 
     document.addEventListener('touchend', () => {
         if (!isDragging) return;
         isDragging = false;
-        
         const diff = currentY - startY;
         
         if (diff > 100) {
@@ -941,9 +812,7 @@
 
     function closeBottomSheet() {
         sheet.classList.remove('visible');
-        if (waypoints.length > 0) {
-            swipeTab.classList.add('visible');
-        }
+        if (waypoints.length > 0) swipeTab.classList.add('visible');
     }
 
     function selectVehicle(type) {
@@ -985,13 +854,10 @@
     }
 
     function clearAll() {
-        waypoints.forEach(wp => {
-            if (wp.marker) map.removeLayer(wp.marker);
-        });
+        waypoints.forEach(wp => { if (wp.marker) map.removeLayer(wp.marker); });
         waypoints = [];
         routeLines.forEach(line => map.removeLayer(line));
         routeLines = [];
-        
         updateWaypointCounter();
         updateWaypointInputs();
         closeBottomSheet();
@@ -1001,6 +867,5 @@
         document.getElementById('loadingOverlay').classList.toggle('visible', show);
     }
 </script>
-
 </body>
 </html>
