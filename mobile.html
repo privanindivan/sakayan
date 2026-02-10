@@ -501,9 +501,10 @@
             <input type="text" class="form-input" id="contributorName" placeholder="Contributor name">
         </div>
 
+        <button class="btn" style="background: #4CAF50; color: white; padding: 14px; border-radius: 10px; margin-top: 8px;" onclick="saveRoute()">💾 Save Route</button>
         <button class="clear-btn" onclick="clearAll()">🗑️ Clear All</button>
         <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: 8px; font-size: 13px; color: #666; text-align: center;">
-            💡 Swipe down to auto-save
+            💡 Swipe down or tap map to close
         </div>
     </div>
 </div>
@@ -605,6 +606,12 @@
     }
 
     map.on('click', function(e) {
+        // If sheet is open, close it when clicking map
+        if (sheet.classList.contains('visible')) {
+            closeBottomSheet();
+            return;
+        }
+        
         if (!addModeActive) return;
 
         const { lat, lng } = e.latlng;
@@ -798,7 +805,7 @@
         const diff = currentY - startY;
         
         if (diff > 100) {
-            autoSaveRoute();
+            // Just close, don't auto-save
             closeBottomSheet();
         } else {
             sheet.style.transform = 'translateY(0)';
@@ -832,9 +839,17 @@
         document.getElementById('toSuggestions').innerHTML = '';
     }
 
-    function autoSaveRoute() {
+    function saveRoute() {
         const contributor = document.getElementById('contributorName').value.trim();
-        if (!contributor || waypoints.length < 2) return;
+        if (!contributor) {
+            alert('Please enter your name');
+            return;
+        }
+        
+        if (waypoints.length < 2) {
+            alert('Please add at least 2 waypoints');
+            return;
+        }
 
         const route = {
             waypoints: waypoints.map(wp => ({ latlng: wp.latlng, name: wp.name })),
@@ -848,8 +863,10 @@
             savedRoutes.push(route);
             localStorage.setItem('sakayanRoutes', JSON.stringify(savedRoutes));
             alert(`✅ Route saved! Total: ${savedRoutes.length}`);
+            closeBottomSheet();
         } catch (error) {
             console.error('Save error:', error);
+            alert('Failed to save route');
         }
     }
 
