@@ -5,668 +5,850 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sakayan - PH Jeepney Routes</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        * { 
-            margin: 0; 
-            padding: 0; 
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
-        
-        body { 
+
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             overflow: hidden;
-            touch-action: none;
-        }
-        
-        #map { 
             height: 100vh;
-            width: 100vw;
-            position: fixed;
+        }
+
+        #map {
+            position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
         }
-        
-        /* Locate button */
-        .locate-btn {
-            position: fixed;
-            bottom: 90px;
-            right: 16px;
+
+        .location-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
             z-index: 1000;
             background: white;
-            border: none;
+            width: 46px;
+            height: 46px;
             border-radius: 50%;
-            width: 56px;
-            height: 56px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            font-size: 24px;
-            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: pointer;
+            border: none;
+            font-size: 22px;
         }
-        
-        .locate-btn:active {
+
+        .location-btn:active {
             transform: scale(0.95);
         }
-        
-        /* Bottom nav */
-        .bottom-nav {
+
+        .toggle-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            border-radius: 30px;
+            padding: 10px 18px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toggle-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 52px;
+            height: 30px;
+            background: #ccc;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #4CAF50;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(22px);
+        }
+
+        .bottom-hint {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 900;
+            background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+            padding: 50px 20px 20px 20px;
+            text-align: center;
+            color: white;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .bottom-hint.visible {
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .hint-text {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .bottom-sheet {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            background: white;
-            border-top: 1px solid #ddd;
-            display: flex;
             z-index: 1001;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .nav-item {
-            flex: 1;
-            padding: 12px 8px;
-            text-align: center;
-            cursor: pointer;
-            border: none;
-            background: none;
-            transition: all 0.2s;
-        }
-        
-        .nav-item.active {
-            color: #667eea;
-            background: #f0f0ff;
-        }
-        
-        .nav-icon {
-            font-size: 24px;
-            display: block;
-            margin-bottom: 4px;
-        }
-        
-        .nav-label {
-            font-size: 11px;
-            font-weight: 600;
-        }
-        
-        /* Slide-up panel */
-        .panel {
-            position: fixed;
-            bottom: 60px;
-            left: 0;
-            right: 0;
             background: white;
-            border-radius: 16px 16px 0 0;
-            box-shadow: 0 -2px 20px rgba(0,0,0,0.2);
-            z-index: 1000;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.25);
             transform: translateY(100%);
-            transition: transform 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
             max-height: 70vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            overflow-y: auto;
         }
-        
-        .panel.active {
+
+        .bottom-sheet.visible {
             transform: translateY(0);
         }
-        
-        .panel-handle {
+
+        .sheet-header {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+            padding-top: 12px;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .sheet-handle {
             width: 40px;
-            height: 4px;
+            height: 5px;
             background: #ddd;
-            border-radius: 2px;
-            margin: 12px auto;
+            border-radius: 3px;
+            margin: 0 auto 16px auto;
+            cursor: grab;
         }
-        
-        .panel-content {
-            padding: 0 20px 20px;
-            overflow-y: auto;
-            flex: 1;
+
+        .sheet-handle:active {
+            cursor: grabbing;
         }
-        
-        /* Search */
-        .search-box {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #ddd;
-            border-radius: 12px;
-            font-size: 16px;
-            margin-bottom: 16px;
+
+        .sheet-content {
+            padding: 0 20px 30px 20px;
         }
-        
-        .search-box:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        /* Route list */
-        .route-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .route-card {
-            padding: 16px;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .route-card:active {
-            background: #f5f5f5;
-            transform: scale(0.98);
-        }
-        
-        .route-name {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .route-meta {
-            font-size: 13px;
-            color: #666;
-        }
-        
-        .route-type {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            background: #FFD700;
+
+        .sheet-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
             color: #333;
-            margin-right: 8px;
         }
-        
-        /* Add route form */
+
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
-        
-        label {
+
+        .form-label {
             display: block;
             font-size: 14px;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
+            color: #555;
+            margin-bottom: 10px;
         }
-        
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-        
-        input:focus, select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .btn {
+
+        .form-input {
             width: 100%;
             padding: 14px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
             font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .vehicle-types {
+            display: flex;
+            gap: 10px;
+        }
+
+        .vehicle-btn {
+            flex: 1;
+            padding: 14px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
             cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
             transition: all 0.2s;
+            text-align: center;
         }
-        
-        .btn-primary {
-            background: #667eea;
+
+        .vehicle-btn.active {
+            background: #4CAF50;
             color: white;
+            border-color: #4CAF50;
         }
-        
-        .btn-primary:active {
-            background: #5568d3;
-            transform: scale(0.98);
-        }
-        
-        .btn-danger {
+
+        .clear-btn {
+            width: 100%;
+            padding: 14px;
             background: #f44336;
             color: white;
-            margin-top: 8px;
-        }
-        
-        .btn-danger:active {
-            background: #d32f2f;
-        }
-        
-        .status {
-            padding: 12px;
-            background: #f0f0ff;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #667eea;
-            text-align: center;
-            margin-bottom: 16px;
-        }
-        
-        .stops-list {
-            margin-bottom: 16px;
-        }
-        
-        .stop-item {
-            padding: 12px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .stop-number {
-            background: #667eea;
-            color: white;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
             font-weight: 600;
-            font-size: 14px;
+            cursor: pointer;
+            margin-top: 12px;
         }
-        
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #999;
+
+        /* SMALLER markers */
+        .custom-marker {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
-        
-        .empty-icon {
-            font-size: 64px;
-            margin-bottom: 16px;
+
+        .start-marker {
+            background: #4CAF50;
         }
-        
-        /* Loading overlay */
-        .loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 16px 24px;
+
+        .end-marker {
+            background: #f44336;
+        }
+
+        .waypoint-marker {
+            background: #FF9800;
+        }
+
+        .location-label {
+            background: white;
+            padding: 4px 8px;
             border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .start-label {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .end-label {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .search-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
             z-index: 2000;
             display: none;
+            flex-direction: column;
         }
-        
-        .loading.active {
+
+        .search-overlay.visible {
+            display: flex;
+        }
+
+        .search-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .search-title {
+            font-size: 18px;
+            font-weight: 700;
+            flex: 1;
+        }
+
+        .search-inputs {
+            padding: 20px;
+        }
+
+        .search-input-group {
+            margin-bottom: 16px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 14px 14px 44px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            position: relative;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 34px;
+            top: 30px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .search-btn {
+            width: 100%;
+            padding: 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-overlay.visible {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Swipe up tab */
+        .swipe-tab {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            background: white;
+            padding: 8px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            cursor: pointer;
+            display: none;
+        }
+
+        .swipe-tab.visible {
             display: block;
+        }
+
+        .waypoint-counter {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
         }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    
-    <button class="locate-btn" id="locateBtn">📍</button>
-    
-    <!-- Search Panel -->
-    <div class="panel" id="searchPanel">
-        <div class="panel-handle"></div>
-        <div class="panel-content">
-            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search routes...">
-            <div class="route-list" id="routeList"></div>
-        </div>
-    </div>
-    
-    <!-- Add Route Panel -->
-    <div class="panel" id="addPanel">
-        <div class="panel-handle"></div>
-        <div class="panel-content">
-            <div class="status" id="addStatus">Tap map to add stops along the route</div>
-            
-            <div class="stops-list" id="stopsList"></div>
-            
-            <div class="form-group">
-                <label>Route Name</label>
-                <input type="text" id="routeName" placeholder="e.g., Quiapo - Cubao">
-            </div>
-            
-            <div class="form-group">
-                <label>Vehicle Type</label>
-                <select id="vehicleType">
-                    <option value="jeepney">🚌 Jeepney</option>
-                    <option value="tricycle">🛺 Tricycle</option>
-                    <option value="uv">🚐 UV Express</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>Your Name (Contributor)</label>
-                <input type="text" id="contributorName" placeholder="Your name">
-            </div>
-            
-            <button class="btn btn-primary" id="saveBtn">💾 Save Route</button>
-            <button class="btn btn-danger" id="clearBtn">🗑️ Clear & Start Over</button>
-        </div>
-    </div>
-    
-    <!-- My Routes Panel -->
-    <div class="panel" id="myPanel">
-        <div class="panel-handle"></div>
-        <div class="panel-content">
-            <h2 style="margin-bottom: 16px;">My Contributions</h2>
-            <div class="route-list" id="myRouteList"></div>
-        </div>
-    </div>
-    
-    <!-- Bottom Navigation -->
-    <div class="bottom-nav">
-        <button class="nav-item active" data-panel="searchPanel">
-            <span class="nav-icon">🔍</span>
-            <span class="nav-label">Search</span>
-        </button>
-        <button class="nav-item" data-panel="addPanel">
-            <span class="nav-icon">➕</span>
-            <span class="nav-label">Add Route</span>
-        </button>
-        <button class="nav-item" data-panel="myPanel">
-            <span class="nav-icon">👤</span>
-            <span class="nav-label">My Routes</span>
-        </button>
-    </div>
-    
-    <div class="loading" id="loading">Loading...</div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-    <script>
-        // Initialize map (Metro Manila)
-        const map = L.map('map', {
-            zoomControl: false
-        }).setView([14.5995, 120.9842], 13);
+<div id="map"></div>
+
+<button class="location-btn" onclick="goToMyLocation()" title="My Location">
+    📍
+</button>
+
+<button class="location-btn" onclick="openSearchOverlay()" title="Search Routes" style="left: 80px;">
+    🔍
+</button>
+
+<div class="toggle-container">
+    <span class="toggle-label">➕ Add Route</span>
+    <div class="toggle-switch" id="toggleSwitch" onclick="toggleAddMode()">
+        <div class="toggle-slider"></div>
+    </div>
+</div>
+
+<div class="search-overlay" id="searchOverlay">
+    <div class="search-header">
+        <button class="back-btn" onclick="closeSearchOverlay()">←</button>
+        <div class="search-title">Find Routes</div>
+    </div>
+    <div class="search-inputs">
+        <div class="search-input-group" style="position: relative;">
+            <span class="search-icon">🟢</span>
+            <input type="text" class="search-input" id="searchFrom" placeholder="From (e.g., Cubao)">
+        </div>
+        <div class="search-input-group" style="position: relative;">
+            <span class="search-icon">🔴</span>
+            <input type="text" class="search-input" id="searchTo" placeholder="To (e.g., Quezon Ave)">
+        </div>
+        <button class="search-btn" onclick="searchRoutes()">🔍 Find Routes</button>
+    </div>
+</div>
+
+<div class="bottom-hint" id="bottomHint">
+    <div class="hint-text">📍 Tap to add waypoints</div>
+</div>
+
+<div class="swipe-tab" id="swipeTab" onclick="openBottomSheet()">
+    <div style="width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 8px;"></div>
+    <div style="font-size: 13px; color: #666; font-weight: 600;">⬆️ Swipe up for details</div>
+</div>
+
+<div class="bottom-sheet" id="bottomSheet">
+    <div class="sheet-header">
+        <div class="sheet-handle" id="sheetHandle"></div>
+    </div>
+    <div class="sheet-content">
+        <div class="sheet-title">Route Details</div>
+
+        <div class="waypoint-counter" id="waypointCounter">0 waypoints</div>
+
+        <div class="form-group">
+            <label class="form-label">Waypoint Names (optional)</label>
+            <div id="waypointInputs"></div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Vehicle Type</label>
+            <div class="vehicle-types">
+                <button class="vehicle-btn active" data-type="jeepney" onclick="selectVehicle('jeepney')">
+                    🚌 Jeepney
+                </button>
+                <button class="vehicle-btn" data-type="tricycle" onclick="selectVehicle('tricycle')">
+                    🛺 Tricycle
+                </button>
+                <button class="vehicle-btn" data-type="puv" onclick="selectVehicle('puv')">
+                    🚐 UV
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Your Name</label>
+            <input type="text" class="form-input" id="contributorName" placeholder="Contributor name">
+        </div>
+
+        <button class="clear-btn" onclick="clearAll()">🗑️ Clear All</button>
+        <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: 8px; font-size: 13px; color: #666; text-align: center;">
+            💡 Swipe down to auto-save
+        </div>
+    </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <div>Finding routes...</div>
+    </div>
+</div>
+
+<script>
+    const map = L.map('map').setView([14.5995, 120.9842], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19
+    }).addTo(map);
+
+    let userLocationMarker = null;
+    let userCurrentLocation = null;
+    let addModeActive = false;
+    let waypoints = [];
+    let routeLines = [];
+    let selectedVehicle = 'jeepney';
+
+    const knownPOIs = [
+        { name: 'Cubao', lat: 14.6191, lng: 121.0509 },
+        { name: 'Quezon Ave', lat: 14.6325, lng: 121.0374 },
+        { name: 'Manila City Hall', lat: 14.5935, lng: 120.9820 },
+        { name: 'SM North', lat: 14.6565, lng: 121.0295 },
+        { name: 'Ayala', lat: 14.5547, lng: 121.0244 },
+        { name: 'Divisoria', lat: 14.6013, lng: 120.9747 },
+        { name: 'Quiapo', lat: 14.5981, lng: 120.9844 }
+    ];
+
+    // Get location on load
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                userCurrentLocation = { lat: latitude, lng: longitude };
+                map.setView([latitude, longitude], 15);
+                
+                userLocationMarker = L.marker([latitude, longitude], {
+                    icon: L.divIcon({
+                        html: '<div style="width:14px;height:14px;background:#007AFF;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+                        iconSize: [14, 14]
+                    })
+                }).addTo(map);
+                
+                // Set default FROM to My Location
+                document.getElementById('searchFrom').value = 'My Location';
+            }
+        );
+    }
+
+    function goToMyLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    map.setView([latitude, longitude], 16, { animate: true });
+                    
+                    if (userLocationMarker) {
+                        userLocationMarker.setLatLng([latitude, longitude]);
+                    }
+                },
+                () => alert('Could not get location')
+            );
+        }
+    }
+
+    function toggleAddMode() {
+        addModeActive = !addModeActive;
+        const toggle = document.getElementById('toggleSwitch');
+        const hint = document.getElementById('bottomHint');
         
-        // Add zoom control to bottom left
-        L.control.zoom({ position: 'bottomleft' }).addTo(map);
+        if (addModeActive) {
+            toggle.classList.add('active');
+            hint.classList.add('visible');
+        } else {
+            toggle.classList.remove('active');
+            hint.classList.remove('visible');
+        }
+    }
+
+    map.on('click', function(e) {
+        if (!addModeActive) return;
+
+        const { lat, lng } = e.latlng;
+        const index = waypoints.length;
         
-        // Basemap
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap, © CartoDB',
-            maxZoom: 19
+        const markerClass = index === 0 ? 'start-marker' : (index === waypoints.length ? 'end-marker' : 'waypoint-marker');
+        
+        const marker = L.marker([lat, lng], {
+            icon: L.divIcon({
+                html: `<div class="custom-marker ${markerClass}"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            })
+        }).addTo(map);
+
+        marker.on('click', function() {
+            // Click marker to add another waypoint after it
+            const wpIndex = waypoints.findIndex(wp => wp.marker === marker);
+            if (wpIndex !== -1) {
+                openBottomSheet();
+            }
+        });
+
+        waypoints.push({ latlng: [lat, lng], marker: marker, name: '' });
+        
+        updateWaypointCounter();
+        updateWaypointInputs();
+        
+        if (waypoints.length >= 2) {
+            calculateRoute();
+            openBottomSheet();
+        }
+    });
+
+    function updateWaypointCounter() {
+        document.getElementById('waypointCounter').textContent = `${waypoints.length} waypoint${waypoints.length !== 1 ? 's' : ''}`;
+    }
+
+    function updateWaypointInputs() {
+        const container = document.getElementById('waypointInputs');
+        container.innerHTML = '';
+        
+        waypoints.forEach((wp, idx) => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-input';
+            input.placeholder = `Waypoint ${idx + 1} name (optional)`;
+            input.value = wp.name;
+            input.style.marginBottom = '8px';
+            input.oninput = (e) => {
+                waypoints[idx].name = e.target.value;
+            };
+            container.appendChild(input);
+        });
+    }
+
+    async function calculateRoute() {
+        if (waypoints.length < 2) return;
+
+        showLoading(true);
+
+        try {
+            const coords = waypoints.map(wp => `${wp.latlng[1]},${wp.latlng[0]}`).join(';');
+            const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                drawRoute(data.routes[0]);
+            }
+        } catch (error) {
+            console.error('Route error:', error);
+        }
+
+        showLoading(false);
+    }
+
+    function drawRoute(route) {
+        routeLines.forEach(line => map.removeLayer(line));
+        routeLines = [];
+
+        const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        
+        const polyline = L.polyline(coordinates, {
+            color: '#4CAF50',
+            weight: 5,
+            opacity: 0.8
         }).addTo(map);
         
-        // State
-        let routes = JSON.parse(localStorage.getItem('sakayan_routes') || '[]');
-        let currentStops = [];
-        let currentMarkers = [];
-        let currentLine = null;
-        let routeControl = null;
-        let userLocationMarker = null;
-        let myContributorName = localStorage.getItem('sakayan_contributor') || '';
+        routeLines.push(polyline);
+        map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+    }
+
+    // Sheet swipe
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    const handle = document.getElementById('sheetHandle');
+    const sheet = document.getElementById('bottomSheet');
+    const swipeTab = document.getElementById('swipeTab');
+
+    handle.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        startY = e.touches[0].clientY;
+    });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentY = e.touches[0].clientY;
+        const diff = currentY - startY;
         
-        // Set contributor name if exists
-        if (myContributorName) {
-            document.getElementById('contributorName').value = myContributorName;
+        if (diff > 0) {
+            sheet.style.transform = `translateY(${diff}px)`;
         }
+    });
+
+    document.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
         
-        // Navigation
-        document.querySelectorAll('.nav-item').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const panelId = btn.dataset.panel;
-                
-                // Update active nav
-                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                // Show panel
-                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-                document.getElementById(panelId).classList.add('active');
-                
-                // Refresh content
-                if (panelId === 'searchPanel') renderRouteList();
-                if (panelId === 'myPanel') renderMyRoutes();
-            });
+        const diff = currentY - startY;
+        
+        if (diff > 100) {
+            autoSaveRoute();
+            closeBottomSheet();
+        } else {
+            sheet.style.transform = 'translateY(0)';
+        }
+    });
+
+    function openBottomSheet() {
+        sheet.classList.add('visible');
+        swipeTab.classList.remove('visible');
+    }
+
+    function closeBottomSheet() {
+        sheet.classList.remove('visible');
+        if (waypoints.length > 0) {
+            swipeTab.classList.add('visible');
+        }
+    }
+
+    function selectVehicle(type) {
+        selectedVehicle = type;
+        document.querySelectorAll('[data-type]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
         });
+    }
+
+    function openSearchOverlay() {
+        document.getElementById('searchOverlay').classList.add('visible');
+    }
+
+    function closeSearchOverlay() {
+        document.getElementById('searchOverlay').classList.remove('visible');
+    }
+
+    async function searchRoutes() {
+        const fromQuery = document.getElementById('searchFrom').value.trim().toLowerCase();
+        const toQuery = document.getElementById('searchTo').value.trim().toLowerCase();
         
-        // Locate user
-        document.getElementById('locateBtn').addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                alert('Geolocation not supported');
-                return;
-            }
-            
-            document.getElementById('loading').classList.add('active');
-            
-            navigator.geolocation.getCurrentPosition((position) => {
-                const { latitude, longitude } = position.coords;
-                
-                if (userLocationMarker) map.removeLayer(userLocationMarker);
-                
-                const icon = L.divIcon({
-                    className: 'user-location',
-                    html: '<div style="background: #4285F4; color: white; padding: 8px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">📍 You</div>',
-                    iconSize: [80, 40]
-                });
-                
-                userLocationMarker = L.marker([latitude, longitude], { icon }).addTo(map);
-                map.setView([latitude, longitude], 16);
-                
-                document.getElementById('loading').classList.remove('active');
-            }, () => {
-                alert('Unable to get location');
-                document.getElementById('loading').classList.remove('active');
-            });
-        });
-        
-        // Add stops by tapping map
-        map.on('click', (e) => {
-            const activePanel = document.querySelector('.panel.active');
-            if (activePanel?.id !== 'addPanel') return;
-            
-            const { lat, lng } = e.latlng;
-            currentStops.push([lat, lng]);
-            
-            // Add marker
-            const marker = L.circleMarker([lat, lng], {
-                radius: 8,
-                fillColor: '#667eea',
-                color: 'white',
-                weight: 2,
-                fillOpacity: 1
-            }).addTo(map).bindPopup(`Stop ${currentStops.length}`);
-            
-            currentMarkers.push(marker);
-            
-            // Draw line
-            if (currentStops.length > 1) {
-                if (currentLine) map.removeLayer(currentLine);
-                currentLine = L.polyline(currentStops, {
-                    color: '#667eea',
-                    weight: 4,
-                    opacity: 0.7
-                }).addTo(map);
-            }
-            
-            updateStopsList();
-        });
-        
-        // Update stops list
-        function updateStopsList() {
-            const list = document.getElementById('stopsList');
-            
-            if (currentStops.length === 0) {
-                list.innerHTML = '';
-                document.getElementById('addStatus').textContent = 'Tap map to add stops along the route';
-                return;
-            }
-            
-            list.innerHTML = currentStops.map((stop, i) => `
-                <div class="stop-item">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div class="stop-number">${i + 1}</div>
-                        <div>Stop ${i + 1}</div>
-                    </div>
-                    <button onclick="removeStop(${i})" style="background: none; border: none; font-size: 20px; cursor: pointer;">🗑️</button>
-                </div>
-            `).join('');
-            
-            document.getElementById('addStatus').textContent = `${currentStops.length} stops added`;
+        if (!fromQuery || !toQuery) {
+            alert('Please enter both locations');
+            return;
         }
         
-        // Remove stop
-        window.removeStop = (index) => {
-            currentStops.splice(index, 1);
-            map.removeLayer(currentMarkers[index]);
-            currentMarkers.splice(index, 1);
-            
-            if (currentLine) map.removeLayer(currentLine);
-            
-            if (currentStops.length > 1) {
-                currentLine = L.polyline(currentStops, {
-                    color: '#667eea',
-                    weight: 4,
-                    opacity: 0.7
-                }).addTo(map);
-            } else {
-                currentLine = null;
-            }
-            
-            updateStopsList();
-        };
-        
-        // Save route
-        document.getElementById('saveBtn').addEventListener('click', () => {
-            const name = document.getElementById('routeName').value.trim();
-            const type = document.getElementById('vehicleType').value;
-            const contributor = document.getElementById('contributorName').value.trim();
-            
-            if (!name || !contributor) {
-                alert('Please fill route name and your name');
-                return;
-            }
-            
-            if (currentStops.length < 2) {
-                alert('Please add at least 2 stops');
-                return;
-            }
-            
-            const route = {
-                id: Date.now(),
-                name,
-                type,
-                contributor,
-                stops: currentStops,
-                created: new Date().toISOString()
-            };
-            
-            routes.push(route);
-            localStorage.setItem('sakayan_routes', JSON.stringify(routes));
-            localStorage.setItem('sakayan_contributor', contributor);
-            
-            alert('✅ Route saved!');
-            clearRoute();
-        });
-        
-        // Clear route
-        document.getElementById('clearBtn').addEventListener('click', clearRoute);
-        
-        function clearRoute() {
-            currentStops = [];
-            currentMarkers.forEach(m => map.removeLayer(m));
-            currentMarkers = [];
-            if (currentLine) map.removeLayer(currentLine);
-            currentLine = null;
-            document.getElementById('routeName').value = '';
-            updateStopsList();
+        let fromPOI;
+        if (fromQuery === 'my location' && userCurrentLocation) {
+            fromPOI = { name: 'My Location', lat: userCurrentLocation.lat, lng: userCurrentLocation.lng };
+        } else {
+            fromPOI = knownPOIs.find(p => p.name.toLowerCase().includes(fromQuery));
         }
         
-        // Render route list
-        function renderRouteList() {
-            const list = document.getElementById('routeList');
-            const query = document.getElementById('searchBox').value.toLowerCase();
-            
-            const filtered = routes.filter(r => 
-                r.name.toLowerCase().includes(query) ||
-                r.contributor.toLowerCase().includes(query)
-            );
-            
-            if (filtered.length === 0) {
-                list.innerHTML = '<div class="empty-state"><div class="empty-icon">🚌</div>No routes found</div>';
-                return;
-            }
-            
-            list.innerHTML = filtered.map(route => `
-                <div class="route-card" onclick="viewRoute(${route.id})">
-                    <div class="route-name">${route.name}</div>
-                    <div class="route-meta">
-                        <span class="route-type">${route.type}</span>
-                        ${route.stops.length} stops • By ${route.contributor}
-                    </div>
-                </div>
-            `).join('');
+        const toPOI = knownPOIs.find(p => p.name.toLowerCase().includes(toQuery));
+        
+        if (!fromPOI || !toPOI) {
+            alert('Location not found. Try: Cubao, Quezon Ave, etc.');
+            return;
         }
         
-        // Render my routes
-        function renderMyRoutes() {
-            const list = document.getElementById('myRouteList');
-            const contributor = localStorage.getItem('sakayan_contributor') || '';
-            
-            const myRoutes = routes.filter(r => r.contributor === contributor);
-            
-            if (myRoutes.length === 0) {
-                list.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div>You haven\'t contributed any routes yet</div>';
-                return;
-            }
-            
-            list.innerHTML = myRoutes.map(route => `
-                <div class="route-card" onclick="viewRoute(${route.id})">
-                    <div class="route-name">${route.name}</div>
-                    <div class="route-meta">
-                        <span class="route-type">${route.type}</span>
-                        ${route.stops.length} stops
-                    </div>
-                </div>
-            `).join('');
-        }
+        closeSearchOverlay();
         
-        // View route
-        window.viewRoute = (id) => {
-            const route = routes.find(r => r.id === id);
-            if (!route) return;
-            
-            // Clear current
-            clearRoute();
-            
-            // Draw route
-            const line = L.polyline(route.stops, {
-                color: '#FFD700',
-                weight: 6,
-                opacity: 0.8
+        // Clear and add waypoints
+        clearAll();
+        
+        waypoints = [
+            { latlng: [fromPOI.lat, fromPOI.lng], name: fromPOI.name, marker: null },
+            { latlng: [toPOI.lat, toPOI.lng], name: toPOI.name, marker: null }
+        ];
+        
+        waypoints.forEach((wp, idx) => {
+            const markerClass = idx === 0 ? 'start-marker' : 'end-marker';
+            wp.marker = L.marker(wp.latlng, {
+                icon: L.divIcon({
+                    html: `<div class="custom-marker ${markerClass}"></div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                })
             }).addTo(map);
-            
-            route.stops.forEach((stop, i) => {
-                L.circleMarker(stop, {
-                    radius: 10,
-                    fillColor: '#FFD700',
-                    color: 'white',
-                    weight: 3,
-                    fillOpacity: 1
-                }).addTo(map).bindPopup(`${route.name}<br>Stop ${i + 1}`);
-            });
-            
-            map.fitBounds(line.getBounds());
-            
-            // Close panel
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        });
+        
+        updateWaypointCounter();
+        updateWaypointInputs();
+        calculateRoute();
+        openBottomSheet();
+    }
+
+    function autoSaveRoute() {
+        const contributor = document.getElementById('contributorName').value.trim();
+        if (!contributor || waypoints.length < 2) return;
+
+        const route = {
+            waypoints: waypoints.map(wp => ({ latlng: wp.latlng, name: wp.name })),
+            vehicleType: selectedVehicle,
+            contributor: contributor,
+            timestamp: new Date().toISOString()
         };
+
+        try {
+            let savedRoutes = JSON.parse(localStorage.getItem('sakayanRoutes') || '[]');
+            savedRoutes.push(route);
+            localStorage.setItem('sakayanRoutes', JSON.stringify(savedRoutes));
+            alert(`✅ Route saved! Total: ${savedRoutes.length}`);
+        } catch (error) {
+            console.error('Save error:', error);
+        }
+    }
+
+    function clearAll() {
+        waypoints.forEach(wp => {
+            if (wp.marker) map.removeLayer(wp.marker);
+        });
+        waypoints = [];
+        routeLines.forEach(line => map.removeLayer(line));
+        routeLines = [];
         
-        // Search box
-        document.getElementById('searchBox').addEventListener('input', renderRouteList);
-        
-        // Initial render
-        renderRouteList();
-    </script>
+        updateWaypointCounter();
+        updateWaypointInputs();
+        closeBottomSheet();
+    }
+
+    function showLoading(show) {
+        document.getElementById('loadingOverlay').classList.toggle('visible', show);
+    }
+</script>
+
 </body>
 </html>
